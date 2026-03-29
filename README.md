@@ -26,11 +26,13 @@ Clone or copy this repository into your `ComfyUI/custom_nodes/` folder and resta
 ```
 ComfyUI/
 └── custom_nodes/
-    └── comfyui-dynamic-prompts/
+    └── comfyui-promptcraft/
         ├── __init__.py
         ├── nodes.py
         ├── parser.py
         ├── pyproject.toml
+        ├── js/
+        │   └── show_text.js
         └── wildcards/
             └── example.txt
 ```
@@ -60,7 +62,7 @@ Displays the resolved text on the node itself. Connect it after **Random Prompts
 
 | Input | Type | Description |
 |-------|------|-------------|
-| `text` | STRING | Text to display |
+| `text` | STRING | Connection only — wire from another node (no text widget) |
 
 | Output | Type | Description |
 |--------|------|-------------|
@@ -69,6 +71,29 @@ Displays the resolved text on the node itself. Connect it after **Random Prompts
 ---
 
 ## Syntax Reference
+
+### Comments `#`
+
+Any text from `#` to the end of the line is treated as a comment and excluded from the output. This applies everywhere in the template, including inside variant blocks.
+
+```
+{
+red|
+# green is disabled for now|
+blue
+} hair
+```
+
+→ `red hair` or `blue hair` (the `green` option is never chosen)
+
+> **Note:** do not place `#` comments inside `${...}` variable declarations. Write the comment after the closing `}` instead:
+> ```
+> ${color=!red} # pick a color
+> ```
+
+If the template contains a syntax error (unmatched `{`, unclosed `__`, etc.), **Random Prompts** will report all errors before execution and prevent the workflow from running.
+
+---
 
 ### Variants `{A|B|C}`
 
@@ -79,6 +104,14 @@ Wrap options in `{` `}` and separate them with `|`. One option is chosen at rand
 ```
 
 → `red hair` / `green hair` / `blue hair`
+
+#### Multi-draw and Unique-draw `{n$$A|B}` / `{!n$$A|B}`
+
+You can pick multiple options at once by specifying a count.
+
+- `{2$$A|B|C}`: Picks 2 options (duplicates allowed, e.g. `A, A` or `B, C`).
+- `{!2$$A|B|C}`: Picks 2 **unique** options without replacement (e.g. `A, C`).
+- `{2$$ and $$A|B|C}`: Joins the picks using a custom separator (` and `). Default separator is `, `.
 
 #### Weighted variants `{N::A|B}`
 
@@ -111,6 +144,16 @@ a __color__ __animal__
 ```
 
 Reads one line each from `wildcards/color.txt` and `wildcards/animal.txt`.
+
+#### Global Unique Wildcards `__!name__`
+
+Prefix the filename with `!` to guarantee that the drawn line will not be repeated across the entire prompt.
+
+```
+__!color__ and __!color__
+```
+
+→ Guarantees two different colors even though the same file is used (e.g. `red and blue`, never `red and red`).
 
 #### Subdirectories
 
@@ -249,15 +292,19 @@ ${h=!{red|pink|blonde}} ${e=!__eye_colors__}
 | Syntax | Description |
 |--------|-------------|
 | `{A\|B\|C}` | Pick one option at random |
+| `{n$$A\|B}` | Multi-draw (e.g. `{2$$A\|B}`) |
+| `{!n$$A\|B}` | Multi-draw without replacement |
 | `{2::A\|B}` | Weighted pick (A is twice as likely) |
 | `{A\|{B\|C}}` | Nesting |
 | `__name__` | Random line from `wildcards/name.txt` |
+| `__!name__` | Globally unique wildcard |
 | `__dir/name__` | Wildcard in a subdirectory |
 | `${v=!val}` | Declare variable — immediate (value is fixed) |
 | `${v=val}` | Declare variable — deferred (re-evaluated each use) |
 | `${v?=!val}` | Declare variable — only if not already set |
 | `${v}` | Read variable |
 | `${v:default}` | Read variable, fall back to default if undeclared |
+| `# comment` | Comment — ignored through end of line |
 
 ---
 

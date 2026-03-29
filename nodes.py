@@ -116,8 +116,7 @@ class ShowTextNode(io.ComfyNode):
                 io.String.Input(
                     "text",
                     display_name="Text",
-                    multiline=True,
-                    dynamic_prompts=False,
+                    force_input=True,
                     tooltip="表示するテキスト。Random Prompts の出力を繋いでください。",
                 ),
             ],
@@ -136,7 +135,74 @@ class ShowTextNode(io.ComfyNode):
         return io.NodeOutput(text, ui=ui.PreviewText(text))
 
 
+class RandomPromptsDebugNode(io.ComfyNode):
+    """
+    Random Prompts のデバッグ用バリアント。
+    構文エラーがあっても例外を投げず、エラー内容をノード上のプレビューエリアに表示します。
+    プロンプトを書いている途中の確認に使ってください。
+    """
+
+    @classmethod
+    @override
+    def define_schema(cls) -> io.Schema:
+        return io.Schema(
+            node_id="PCRandomPromptsDebug",
+            display_name="Random Prompts (Debug)",
+            category="Promptcraft",
+            description=(
+                "Random Prompts のデバッグ用ノード。\n"
+                "構文エラーはノード上のプレビューエリアに表示され、ワークフローは止まりません。\n"
+                "正常時は解決済みプロンプトをプレビュー表示します。"
+            ),
+            search_aliases=["dynamic prompts", "random prompt", "wildcard", "debug"],
+            is_output_node=True,
+            inputs=[
+                io.String.Input(
+                    "text",
+                    display_name="Prompt Template",
+                    multiline=True,
+                    dynamic_prompts=False,
+                    default="",
+                    tooltip=(
+                        "Prompt template.\n"
+                        "  {A|B|C}  — pick one at random\n"
+                        "  __name__ — wildcard from file\n"
+                        "  # comment — ignored"
+                    ),
+                ),
+                io.Int.Input(
+                    "seed",
+                    default=0,
+                    min=0,
+                    max=0xFFFFFFFFFFFFFFFF,
+                    control_after_generate=io.ControlAfterGenerate.randomize,
+                    tooltip=(
+                        "Random seed.\n"
+                        "Set 'control after generate' to 'fixed' for reproducible results."
+                    ),
+                ),
+            ],
+            outputs=[
+                io.String.Output(
+                    "text",
+                    display_name="Resolved Prompt",
+                    tooltip="The resolved prompt, or empty string if there are syntax errors.",
+                ),
+            ],
+        )
+
+    @classmethod
+    @override
+    def execute(cls, text: str, seed: int) -> io.NodeOutput:
+        errors = parser.validate_syntax(text)
+        if errors:
+            msg = "Syntax errors:\n" + "\n".join(f"  • {e}" for e in errors)
+            return io.NodeOutput("", ui=ui.PreviewText(msg))
+        result = parser.generate(text, seed, _WILDCARDS_DIR)
+        return io.NodeOutput(result, ui=ui.PreviewText(result))
+
+
 class DynamicPromptsExtension(ComfyExtension):
     @override
     async def get_node_list(self) -> list[type[io.ComfyNode]]:
-        return [RandomPromptsNode, ShowTextNode]
+        return [RandomPromptsNode, RandomPromptsDebugNode, ShowTextNode]
