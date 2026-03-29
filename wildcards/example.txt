@@ -1,0 +1,9 @@
+# This is an example wildcard file.
+# Usage in prompt: __example__
+# Each non-empty line (not starting with #) is a candidate value.
+
+masterpiece
+best quality
+highly detailed
+4k
+8k

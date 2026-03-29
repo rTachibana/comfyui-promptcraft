@@ -1,0 +1,10 @@
+[project]
+name = "comfyui-promptcraft"
+version = "1.0.0"
+description = "Dynamic prompt generation with {A|B} variants, __wildcard__ files, and ${var} variables"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+
+[tool.comfy]
+DisplayName = "Promptcraft"
+requires-comfyui = ">=0.18.0"
